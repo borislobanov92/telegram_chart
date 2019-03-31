@@ -1,0 +1,29 @@
+{
+  "name": "tchart",
+  "version": "0.1.0",
+  "description": "Simple chart for web",
+  "main": "dist/index.js",
+  "umd:main": "dist/index.umd.js",
+  "unpkg": "dist/index.umd.js",
+  "module": "dist/index.module.js",
+  "jsnext:main": "dist/index.module.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/borislobanov92/telegram_chart.git"
+  },
+  "keywords": [
+    "Canvas",
+    "Chart"
+  ],
+  "author": "https://github.com/borislobanov92",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/borislobanov92/telegram_chart/issues"
+  },
+  "homepage": "https://github.com/borislobanov92/telegram_chart#readme"
+}
