@@ -83,6 +83,10 @@ class Chart {
 	// 	]
 	// };
 
+	rootElement: Element;
+    nightModeButton: Element;
+	config: any;
+
 	constructor({ rootElement, config, nightModeButton }) {
 		this.rootElement = rootElement;
 		this.config = config;
@@ -269,7 +273,7 @@ class Chart {
 	update(ts) {
 		const prevTs = this.prevTs || ts;
 		// update prev timestamp
-		this.delta = Math.min(50, ts - prevTs);
+		this.delta = Math.min(25, ts - prevTs);
 		this.virtualWidth = calculateCanvasWidth(this.canvasSize.width, this.viewport);
 		this.offsetX = getViewportOffset(this.virtualWidth, this.viewport.start);
 		this.prevTs = ts;

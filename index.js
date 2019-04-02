@@ -1,4 +1,4 @@
-import Chart from './src/chart/chart.js';
+import Chart from './src/chart/chart.ts';
 import parseData from './src/utils/parse-data.js';
 import NightModeButton from "./src/night-mode-button/night-mode-button.js";
 
