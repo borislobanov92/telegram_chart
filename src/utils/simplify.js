@@ -1,3 +1,5 @@
+// TODO Move this to typescript
+
 function getSqDist(p1, p2) {
 
 	var dx = p1.x - p2.x,

@@ -2,11 +2,38 @@ import hexToRGB from '../utils/hex-to-rgb.js';
 import getCoords from '../utils/get-coords.js';
 import getMinMaxRange from '../utils/get-min-max-range.js';
 
+import { Dataset, Viewport } from "../models";
+import NightModeButton from '../night-mode-button/night-mode-button.js';
+
 const MIN_WIDTH_VIEWPORT = 40;
 
-function getTranslateValue(transform) {
+function getTranslateValue(transform: string): number {
 	return +transform.replace(/[^\d.]/g, '');
 }
+
+type InternalDataset = Dataset &  {
+  ratioY: number,
+  targetRatioY: number,
+};
+
+type Subscriber = (nextViewport: Viewport) => unknown;
+
+type Config = {
+	datasets: Array<Dataset>,
+	viewport: Viewport,
+	timeline: Array<DOMTimeStamp>;
+};
+
+type InternalViewportChangeEvent = {
+	nextOffset: number;
+	nextWidth: number;
+};
+
+type Props = {
+	rootElement: HTMLElement;
+	config: Config;
+	nightModeButton: NightModeButton;
+};
 
 class ChartMap {
 
@@ -25,48 +52,39 @@ class ChartMap {
 		`;
 	}
 
-	// Config should has shape like object below
+  rootElement: HTMLElement;
+	config: Config;
+	datasets: Array<InternalDataset>;
+	timeline: Array<DOMTimeStamp>;
+	viewport: Viewport;
+  nightModeButton: NightModeButton;
+  canvas: HTMLCanvasElement;
+  sliderElement: HTMLElement;
+  leftHandElement: HTMLElement;
+  rightHandElement: HTMLElement;
+  canvasSize: ClientRect;
+  devicePixelRatio: number;
+  ctx: CanvasRenderingContext2D;
 
-	// const config = {
-	// 	timeline: data.columns[0].slice(1),
-	//  viewport: { start: 0.7, end: 1.0 }
-	// 	datasets: [
-	// 		{
-	// 			values: data.columns[1].slice(1),
-	// 			name: 'y0',
-	// 			color: '#3DC23F'
-	// 		},
-	// 		{
-	// 			values: data.columns[2].slice(1),
-	// 			name: 'y1',
-	// 			color: '#F34C44'
-	// 		}
-	// 	]
-	// };
-	constructor({ rootElement, config, nightModeButton }) {
+  ratioY: number;
+  ratioX: number;
+  prevTs: number;
+
+  shouldRender: boolean = true;
+  isNightMode: boolean = false;
+
+  subscribers: Array<Subscriber>;
+
+  maxY: number = 0;
+  minY: number = 0;
+
+	constructor({ rootElement, config, nightModeButton }: Props) {
 		this.rootElement = rootElement;
 		this.config = config;
 		this.nightModeButton = nightModeButton;
 
 		this.timeline = this.config.timeline || [];
-		this.viewport = this.config.viewport || {};
-		this.datasets = null;
-		this.canvas = null;
-		this.sliderElement = null;
-		this.leftHandElement = null;
-		this.rightHandElement = null;
-		this.canvasSize = null;
-		this.devicePixelRatio = null;
-		this.ctx = null;
-		this.ratioY = null;
-		this.ratioX = null;
-		this.prevTs = null;
-		this.shouldRender = true;
-		this.isNightMode = false;
-		this.subscribers = [];
-
-		this.maxY = 0;
-		this.minY = 0;
+		this.viewport = this.config.viewport || { start: 0.7, end: 1 };
 	}
 
 	init() {
@@ -102,11 +120,11 @@ class ChartMap {
 		this.rightHandElement.addEventListener('mousedown', (event) => this.rightHandTouchHandle(event));
 	};
 
-	subscribe(callback) {
+	subscribe(callback: Subscriber) {
 		this.subscribers.push(callback);
 	}
 
-	fireChangeViewportEvent(event) {
+	fireChangeViewportEvent(event: InternalViewportChangeEvent) {
 		const { nextOffset, nextWidth } = event;
 
 		this.viewport = {
@@ -117,7 +135,7 @@ class ChartMap {
 		this.subscribers.forEach((callback) => callback(this.viewport));
 	}
 
-	toggleDataset({ id, checked }) {
+	toggleDataset({ id, checked } : { id: string; checked: boolean }) {
 		if (checked) {
 			this.turnOnDataset(id);
 		} else {
@@ -125,12 +143,12 @@ class ChartMap {
 		}
 	}
 
-	turnOffDataset(id) {
+	turnOffDataset(id: String) {
 		const stayOnDatasets = [];
 		this.shouldRender = true;
 
 		for (let i = 0; i < this.datasets.length; i++) {
-			if (this.datasets[i].id === id) {
+			if (this.datasets[i].name === id) {
 				this.datasets[i].targetOpacity = 0;
 			}
 
@@ -148,14 +166,14 @@ class ChartMap {
 		}
 	}
 
-	turnOnDataset(id) {
+	turnOnDataset(id: String) {
 		[this.minY, this.maxY] = getMinMaxRange(this.datasets);
 		this.shouldRender = true;
 
 		const newRatioY = this.canvasSize.height / (this.maxY - this.minY);
 
 		for (let i = 0; i < this.datasets.length; i++) {
-			if (this.datasets[i].id === id) {
+			if (this.datasets[i].name === id) {
 				this.datasets[i].targetOpacity = 1;
 				this.datasets[i].ratioY = newRatioY;
 			}
@@ -188,7 +206,7 @@ class ChartMap {
 		this.shouldRender = true;
 	}
 
-	update(ts) {
+	update(ts: DOMTimeStamp) {
 		if (!this.shouldRender) {
 			return;
 		}
@@ -228,7 +246,7 @@ class ChartMap {
 		this.datasets.forEach((dataset) => this.drawChart(dataset));
 	}
 
-	drawChart(dataset) {
+	drawChart(dataset: InternalDataset) {
 		const { values, color = 'red', ratioY, opacity } = dataset;
 
 		this.ctx.save();
@@ -248,10 +266,8 @@ class ChartMap {
 		this.ctx.restore();
 	}
 
-	sliderTouchHandle(event, isTouchEvent = false) {
-		if (isTouchEvent) {
-			event = event.touches[0];
-		}
+  sliderTouchHandle(rawEvent: TouchEvent | MouseEvent, isTouchEvent = false) {
+		const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 		const moveEvent = isTouchEvent ? 'touchmove' : 'mousemove';
 		const upEvent = isTouchEvent ? 'touchend' : 'mouseup';
@@ -263,12 +279,10 @@ class ChartMap {
 		const rightShift = coords.right - event.pageX;
 		const width = this.sliderElement.clientWidth;
 
-		const move = (event) => {
-			event.stopImmediatePropagation();
+		const move = (rawEvent: TouchEvent | MouseEvent) => {
+      rawEvent.stopImmediatePropagation();
 
-			if (isTouchEvent) {
-				event = event.touches[0];
-			}
+      const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 			const delta = event.pageX - originEventX;
 
@@ -308,12 +322,10 @@ class ChartMap {
 		document.addEventListener(upEvent, cleanUp);
 	}
 
-	rightHandTouchHandle(event, isTouchEvent = false) {
-		event.stopImmediatePropagation();
+	rightHandTouchHandle(rawEvent: TouchEvent | MouseEvent, isTouchEvent = false) {
+    rawEvent.stopImmediatePropagation();
 
-		if (isTouchEvent) {
-			event = event.touches[0];
-		}
+    const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 		const moveEvent = isTouchEvent ? 'touchmove' : 'mousemove';
 		const upEvent = isTouchEvent ? 'touchend' : 'mouseup';
@@ -323,12 +335,10 @@ class ChartMap {
 		const originWidth = this.sliderElement.clientWidth;
 		const offset = getTranslateValue(this.sliderElement.style.transform);
 
-		const changeWidth = (event) => {
-			event.stopImmediatePropagation();
+		const changeWidth = (rawEvent: TouchEvent | MouseEvent) => {
+      rawEvent.stopImmediatePropagation();
 
-			if (isTouchEvent) {
-				event = event.touches[0];
-			}
+      const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 			const delta = event.pageX - originEventX;
 			const newWidth = originWidth + delta;
@@ -369,12 +379,10 @@ class ChartMap {
 		document.addEventListener(upEvent, cleanUp);
 	}
 
-	leftHandTouchHandle(event, isTouchEvent = false) {
-		event.stopImmediatePropagation();
+	leftHandTouchHandle(rawEvent: TouchEvent | MouseEvent, isTouchEvent = false) {
+    rawEvent.stopImmediatePropagation();
 
-		if (isTouchEvent) {
-			event = event.touches[0];
-		}
+    const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 		const moveEvent = isTouchEvent ? 'touchmove' : 'mousemove';
 		const upEvent = isTouchEvent ? 'touchend' : 'mouseup';
@@ -386,12 +394,10 @@ class ChartMap {
 		const originWidth = this.sliderElement.clientWidth;
 		const leftShiftX = event.pageX - sliderCoords.left;
 
-		const changeWidth = (event) => {
-			event.stopImmediatePropagation();
+		const changeWidth = (rawEvent: TouchEvent | MouseEvent) => {
+      rawEvent.stopImmediatePropagation();
 
-			if (isTouchEvent) {
-				event = event.touches[0];
-			}
+      const event = isTouchEvent ? (rawEvent as TouchEvent).touches[0] : rawEvent as MouseEvent;
 
 			const delta = event.pageX - originEventX;
 			const newWidth = originWidth + -1 * delta;

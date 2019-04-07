@@ -1,5 +1,5 @@
-import getWeekDay from '../utils/get-week-day.js';
-import formatDate from '../utils/format-date.js';
+import getWeekDay from '../utils/get-week-day';
+import formatDate from '../utils/format-date';
 
 
 class Tooltip {
@@ -10,16 +10,13 @@ class Tooltip {
 		`;
     }
 
-    constructor(element, datasetsCanvas) {
-        this.element = element;
-        this.datasetsCanvas = datasetsCanvas;
-    }
+    constructor(private element: HTMLElement) {}
 
     init() {
         this.element.insertAdjacentHTML('beforeend', Tooltip.getTooltipTemplate());
     }
 
-    updateTooltipData(date, pointsData) {
+    updateTooltipData(date: DOMTimeStamp, pointsData) {
         const header = this.element.querySelector('.selected-tooltip__header');
         const labelContainer = this.element.querySelector('.selected-tooltip__label-container');
 

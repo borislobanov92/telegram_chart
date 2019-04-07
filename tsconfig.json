@@ -9,7 +9,8 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "noImplicitAny": true,
-    "strict": true
+    "strict": true,
+    "strictNullChecks": false
   },
   "include": [
     "src/**/*"

@@ -1,16 +1,18 @@
 
-export default function rafThrottle(f, time) {
+export type ReturnTuple = [(...args: any[]) => any, () => number]
+
+export default function rafThrottle<T extends unknown>(f: CallableFunction, time: number): ReturnTuple {
 	let lastCallTime = performance.now();
-	let lastArgs;
-	let lastResult;
+	let lastArgs: any[];
+	let lastResult: T;
 	let isFirstCall = true;
 
 	return [function () {
 		var actualTime = performance.now();
-		lastArgs = arguments;
+		lastArgs = Array.from(arguments);
 
 		if ((actualTime - lastCallTime) >= time || isFirstCall) {
-			lastResult = f.apply(this, lastArgs);
+			lastResult = f(lastArgs);
 			lastCallTime = actualTime;
 			isFirstCall = false;
 		}

@@ -1,5 +1,5 @@
 
-export default function formatDate(ts) {
+export default function formatDate(ts: DOMTimeStamp): string {
 	const date = new Date(ts);
 	const month_names_short = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

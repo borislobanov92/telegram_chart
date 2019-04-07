@@ -1,19 +1,27 @@
 
-// Parse json string to Array objects which has shape below
-//
-// {
-//		timeline: [timestamp1, timestamp2 ..... timestampN],
-//		datasets: {
-// 			name1: [value1, value2, ... valueN],
-// 			name2: [value1, value2, ... valueN]
-// 		}
-//		types: { name: typeOfChart },
-//		names: { name: visibleNameOfChart },
-//		color: { name: hexColor },
-// }
-//
 
-export default function parseData(parsedData) {
+type Column = [string, ...Array<number>];
+type RawChartData = {
+	columns: Array<Column>;
+	types: { [name: string]: string };
+  names: { [name: string]: string };
+  colors: { [name: string]: string };
+}
+
+type Dataset = {
+  values: Array<number>;
+  name: string;
+  color: string;
+};
+type ParsedData = {
+	timeline: Array<DOMTimeStamp>;
+	datasets: Array<Dataset>;
+  types?: { [name: string]: string };
+  names?: { [name: string]: string };
+  colors?: { [name: string]: string };
+}
+
+export default function parseData(parsedData: Array<RawChartData>): Array<ParsedData> {
 	const TIMELINE_TYPE = 'x';
 
 	try {
@@ -21,8 +29,8 @@ export default function parseData(parsedData) {
 		return parsedData.map(chartData => {
 			const types = chartData.types || {};
 			const columns = chartData.columns || [];
-			const names = chartData.names || [];
-			const colors = chartData.colors || [];
+			const names = chartData.names || {};
+			const colors = chartData.colors || {};
 
 			const nameAxisX = Object.keys(types).find((key) => types[key] === TIMELINE_TYPE);
 
